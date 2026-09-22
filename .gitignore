@@ -1,0 +1,12 @@
+.env
+.venv/
+__pycache__/
+*.py[cod]
+*.pkl
+.ipynb_checkpoints/
+.pytest_cache/
+.ruff_cache/
+output/*
+!output/.gitkeep
+data/
+.DS_Store

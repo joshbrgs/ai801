@@ -1,9 +1,23 @@
 services:
   jupyter:
-    build: .
+    build:
+      context: .
+      target: jupyter
     image: ai801-jupyter
     ports:
       - "127.0.0.1:8888:8888"
     volumes:
       - .:/app
+    restart: unless-stopped
+
+  blackjack:
+    build:
+      context: .
+      target: blackjack
+    image: ai801-blackjack
+    ports:
+      - "127.0.0.1:6080:6080"
+    volumes:
+      - .:/app
+    init: true
     restart: unless-stopped

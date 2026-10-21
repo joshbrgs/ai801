@@ -28,13 +28,27 @@ class Card:
         else:
             return int(self.rank)
 
-# Represents a full 52-card deck
+# Represents a shoe of one or more 52-card decks, kept between rounds
 class Deck:
-    def __init__(self):
-        # Build the deck as a list of Card objects (one for each combination)
-        self.cards = [Card(suit, rank) for suit in SUITS for rank in RANKS]
-        random.shuffle(self.cards)  # Shuffle the deck randomly
+    def __init__(self, num_decks=1, penetration=0.75):
+        self.num_decks = num_decks
+        self.penetration = penetration  # Fraction of the shoe dealt before a reshuffle
+        self.shuffles = 0               # Counts fresh shoes, so card counters know to reset
+        self.shuffle()
+
+    def shuffle(self):
+        """Refills the shoe with every card and shuffles it"""
+        self.cards = [Card(suit, rank) for _ in range(self.num_decks)
+                      for suit in SUITS for rank in RANKS]
+        random.shuffle(self.cards)
+        self.shuffles += 1
+
+    def needs_shuffle(self):
+        """True once the penetration point of the shoe has been dealt"""
+        return len(self.cards) <= (1 - self.penetration) * 52 * self.num_decks
 
     def deal(self):
-        """Deals (removes and returns) the top card from the deck"""
-        return self.cards.pop() if self.cards else None
+        """Deals (removes and returns) the top card, opening a fresh shoe if this one ran out"""
+        if not self.cards:
+            self.shuffle()
+        return self.cards.pop()

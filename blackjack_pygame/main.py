@@ -28,7 +28,7 @@ from animation_config import AnimationConfigManager  # Animation configuration
 class Game:
     """Encapsulates all Blackjack game logic and UI rendering."""
 
-    def __init__(self) -> None:
+    def __init__(self, num_decks: int = 1, penetration: float = 0.75) -> None:
         # --------- Game Window Setup ---------
         pygame.init()
         self.WIDTH, self.HEIGHT = 800, 600
@@ -85,8 +85,8 @@ class Game:
         self.active_split_hand = 0     # Which split hand is currently active
         self.split_hands_complete = [] # Track which split hands are finished
 
-        # Deck and hands will be created when a round starts
-        self.deck: Deck | None = None
+        # The shoe persists between rounds; hands are dealt when a round starts
+        self.deck = Deck(num_decks, penetration)
         self.player_hand = []
         self.dealer_hand = []
 
@@ -95,6 +95,7 @@ class Game:
 
         self.running = True
         self.hints_enabled = False
+        self.agent_label = ""  # Last move made by an agent, shown in place of a hint
     
     def _load_images(self) -> None:
         """Load and scale images based on current layout."""
@@ -445,8 +446,9 @@ class Game:
         # Clear previous animations
         self.card_animator.clear_all_animations()
         
-        # Create new deck and deal cards
-        self.deck = Deck()
+        # Reshuffle once the shoe reaches its penetration point, then deal
+        if self.deck.needs_shuffle():
+            self.deck.shuffle()
         self.player_hand = [self.deck.deal(), self.deck.deal()]
         self.dealer_hand = [self.deck.deal(), self.deck.deal()]
         
@@ -477,6 +479,52 @@ class Game:
                 callback=on_deal_complete
             )
 
+    # --------- Hit ---------
+    def hit(self) -> None:
+        """Deal one card to the active hand. A bust ends that hand."""
+        self.player_hand.append(self.deck.deal())
+        if self.is_split:
+            # Update the active split hand
+            self.split_hands[self.active_split_hand] = self.player_hand
+
+        if self.calculate_hand_value(self.player_hand) > 21:
+            if self.is_split:
+                self.complete_split_hand()
+            else:
+                self.winner = "Bust! Dealer Wins."
+                self.player_chips -= self.player_bet
+                self.stats["busts"] += 1
+                self.stats["losses"] += 1
+                self.stats["chips_lost"] += self.player_bet
+                self.game_over = True
+                self.player_turn = False
+
+    # --------- Stand ---------
+    def stand(self) -> None:
+        """End the active hand. After the last hand the dealer plays and the round is settled."""
+        if self.is_split:
+            self.complete_split_hand()
+            return
+        self.player_turn = False
+        while self.calculate_hand_value(self.dealer_hand) < 17:
+            self.dealer_hand.append(self.deck.deal())
+        player_value = self.calculate_hand_value(self.player_hand)
+        dealer_value = self.calculate_hand_value(self.dealer_hand)
+        if dealer_value > 21 or player_value > dealer_value:
+            self.winner = "Player Wins!"
+            self.player_chips += self.player_bet
+            self.stats["wins"] += 1
+            self.stats["chips_won"] += self.player_bet
+        elif player_value == dealer_value:
+            self.winner = "Push! It's a tie."
+            self.stats["pushes"] += 1
+        else:
+            self.winner = "Dealer Wins."
+            self.player_chips -= self.player_bet
+            self.stats["losses"] += 1
+            self.stats["chips_lost"] += self.player_bet
+        self.game_over = True
+
     # --------- Handle a Single Event ---------
     def handle_event(self, event) -> None:
         if event.type == pygame.QUIT:
@@ -502,45 +550,9 @@ class Game:
                     self.reset_game()  # Start round
             elif self.round_started and not self.game_over:
                 if self.hit_button.collidepoint(event.pos):
-                    self.player_hand.append(self.deck.deal())
-                    if self.is_split:
-                        # Update the active split hand
-                        self.split_hands[self.active_split_hand] = self.player_hand
-                    
-                    if self.calculate_hand_value(self.player_hand) > 21:
-                        if self.is_split:
-                            self.complete_split_hand()
-                        else:
-                            self.winner = "Bust! Dealer Wins."
-                            self.player_chips -= self.player_bet
-                            self.stats["busts"] += 1
-                            self.stats["losses"] += 1
-                            self.stats["chips_lost"] += self.player_bet
-                            self.game_over = True
-                            self.player_turn = False
+                    self.hit()
                 elif self.stand_button.collidepoint(event.pos):
-                    if self.is_split:
-                        self.complete_split_hand()
-                    else:
-                        self.player_turn = False
-                        while self.calculate_hand_value(self.dealer_hand) < 17:
-                            self.dealer_hand.append(self.deck.deal())
-                        player_value = self.calculate_hand_value(self.player_hand)
-                        dealer_value = self.calculate_hand_value(self.dealer_hand)
-                        if dealer_value > 21 or player_value > dealer_value:
-                            self.winner = "Player Wins!"
-                            self.player_chips += self.player_bet
-                            self.stats["wins"] += 1
-                            self.stats["chips_won"] += self.player_bet
-                        elif player_value == dealer_value:
-                            self.winner = "Push! It's a tie."
-                            self.stats["pushes"] += 1
-                        else:
-                            self.winner = "Dealer Wins."
-                            self.player_chips -= self.player_bet
-                            self.stats["losses"] += 1
-                            self.stats["chips_lost"] += self.player_bet
-                        self.game_over = True
+                    self.stand()
                 elif self.double_button.collidepoint(event.pos) and self.can_double_down():
                     self.double_down()
                 elif self.split_button.collidepoint(event.pos) and self.can_split():
@@ -663,6 +675,11 @@ class Game:
             if suggestion:
                 hint_pos = text_positions['hint_text']
                 self.draw_text(f"Hint: {suggestion}", hint_pos[0], hint_pos[1], (255, 255, 0))
+
+        # Draw the agent's last move when an agent is playing
+        if self.agent_label:
+            hint_pos = text_positions['hint_text']
+            self.draw_text(self.agent_label, hint_pos[0], hint_pos[1] + 25, (0, 255, 255))
 
         # Draw hint toggle button
         hint_color = (150, 200, 255) if not self.hints_enabled else (255, 215, 0)

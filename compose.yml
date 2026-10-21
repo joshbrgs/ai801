@@ -17,6 +17,11 @@ services:
     image: ai801-blackjack
     ports:
       - "127.0.0.1:6080:6080"
+    environment:
+      # e.g. AGENT_POLICY=blackjack_rl.policies:basic_strategy docker compose up -d blackjack
+      AGENT_POLICY: ${AGENT_POLICY:-}
+      AGENT_DELAY: ${AGENT_DELAY:-1.0}
+      AGENT_DECKS: ${AGENT_DECKS:-1}
     volumes:
       - .:/app
     init: true

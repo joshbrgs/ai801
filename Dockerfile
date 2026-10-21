@@ -7,7 +7,9 @@ ENV UV_COMPILE_BYTECODE=1 \
     UV_LINK_MODE=copy \
     # Keep the venv outside /app so the project bind mount doesn't hide it
     UV_PROJECT_ENVIRONMENT=/opt/venv \
-    PATH="/opt/venv/bin:$PATH"
+    PATH="/opt/venv/bin:$PATH" \
+    # blackjack_rl is imported straight from the bind-mounted source, so edits apply on restart
+    PYTHONPATH=/app/src
 
 WORKDIR /app
 
@@ -35,7 +37,9 @@ RUN apt-get update \
     && rm -rf /var/lib/apt/lists/*
 
 ENV DISPLAY=:99 \
-    SDL_AUDIODRIVER=dummy
+    SDL_AUDIODRIVER=dummy \
+    # Show an agent's round results in `docker compose logs` as they happen
+    PYTHONUNBUFFERED=1
 
 COPY docker/blackjack-entrypoint.sh /usr/local/bin/blackjack-entrypoint
 RUN chmod +x /usr/local/bin/blackjack-entrypoint

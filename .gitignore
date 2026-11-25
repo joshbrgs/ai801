@@ -3,10 +3,13 @@
 __pycache__/
 *.py[cod]
 *.pkl
+!models/*.pkl
 .ipynb_checkpoints/
 .pytest_cache/
 .ruff_cache/
 output/*
 !output/.gitkeep
+!output/*.png
+!output/*.csv
 data/
 .DS_Store

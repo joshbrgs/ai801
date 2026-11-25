@@ -1,12 +1,15 @@
 [project]
 name = "ai801"
 version = "0.1.0"
-description = "Add your description here"
+description = "Blackjack reinforcement learning: a Gymnasium environment with split, double and a finite shoe, plus Q-learning and DQN agents with Hi-Lo card counting"
 readme = "README.md"
 requires-python = ">=3.12"
 dependencies = [
     "gymnasium>=1.4.0",
+    "matplotlib>=3.11.2",
+    "pandas>=3.1.1",
     "pygame>=2.6.1",
+    "torch>=2.15.0",
     "typing-extensions>=4.16.0",
 ]
 
@@ -29,3 +32,12 @@ testpaths = ["tests"]
 
 [tool.ruff]
 line-length = 100
+
+# CPU-only torch on Linux (Docker, Colab's uv sync): the default wheel pulls in several GB of CUDA
+[tool.uv.sources]
+torch = [{ index = "pytorch-cpu", marker = "sys_platform == 'linux'" }]
+
+[[tool.uv.index]]
+name = "pytorch-cpu"
+url = "https://download.pytorch.org/whl/cpu"
+explicit = true

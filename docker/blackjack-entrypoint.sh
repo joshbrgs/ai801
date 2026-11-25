@@ -10,10 +10,11 @@ websockify --web /usr/share/novnc 6080 localhost:5900 &
 
 # Relaunch the game if a player quits or goes bankrupt, so the page never goes blank.
 # With AGENT_POLICY set (module:name), an agent plays instead of a person.
+# AGENT_WRAPPER (module:name) wraps the table first, e.g. blackjack_rl.counting:hilo_3 for counting agents.
 cd /app/blackjack_pygame
 while true; do
     if [ -n "$AGENT_POLICY" ]; then
-        python autoplay.py --policy "$AGENT_POLICY" \
+        python autoplay.py --policy "$AGENT_POLICY" ${AGENT_WRAPPER:+--wrapper "$AGENT_WRAPPER"} \
             --delay "${AGENT_DELAY:-1.0}" --decks "${AGENT_DECKS:-1}" || true
     else
         python main.py || true

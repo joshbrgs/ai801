@@ -17,6 +17,33 @@ or go bankrupt. Restart it after code changes with `docker compose restart black
 
 Stop with `docker compose down`.
 
+## Blackjack environment
+
+`src/blackjack_rl/` is the shared game environment: Gymnasium's `Blackjack-v1` extended with
+double, split and a finite shoe, plus baseline policies. Notebooks import
+it (`import blackjack_rl`), and `notebooks/blackjack_split_double.ipynb` walks through it.
+
+```sh
+uv run pytest            # tests, including headless rounds on the pygame table
+```
+
+### Watching an agent play
+
+Any policy `(obs, info) -> action` can play the pygame table, one move per `--delay` seconds:
+
+```sh
+cd blackjack_pygame
+uv run python autoplay.py --policy blackjack_rl.policies:basic_strategy --decks 6
+```
+
+or in Docker, at the same noVNC URL as above:
+
+```sh
+AGENT_POLICY=blackjack_rl.policies:basic_strategy AGENT_DECKS=6 docker compose up -d blackjack
+```
+
+Leave `AGENT_POLICY` unset to play the game yourself.
+
 ## Adding dependencies
 
 Deps are managed with [uv](https://docs.astral.sh/uv/) inside the container — you don't need uv installed.
